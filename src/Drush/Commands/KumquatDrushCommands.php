@@ -185,7 +185,9 @@ class KumquatDrushCommands extends DrushCommands {
     // Export all the selected configurations.
     foreach ($toExport as $config_name) {
       try {
-        $directoryStorage->write($config_name, $this->configStorage->read($config_name));
+        $data = $this->configStorage->read($config_name);
+        unset($data['uuid'], $data['_core']);
+        $directoryStorage->write($config_name, $data);
       } catch (\TypeError $e) {
         throw new CommandFailedException(dt('Source not found for @name.', ['@name' => $config_name]));
       }
