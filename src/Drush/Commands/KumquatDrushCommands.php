@@ -178,7 +178,7 @@ class KumquatDrushCommands extends DrushCommands {
     }
 
     $module_dir = $this->moduleExtensionList->getPath($module);
-    $info = $this->infoParser->parse(DRUPAL_ROOT . '/' .  $module_dir . '/' . $module . '.info.yml');
+    $info = $this->infoParser->parse(DRUPAL_ROOT . '/' . $module_dir . '/' . $module . '.info.yml');
     if (empty($info['kumquat_devel']['export'])) {
       throw new CommandFailedException('Nothing to export! Check the kumquat_devel.export key of your info.yml file.');
     }
@@ -220,7 +220,8 @@ class KumquatDrushCommands extends DrushCommands {
           $languageDirectoryStorage->write($config_name, $translation);
           $exported[] = 'translation/' . $langcode . '/' . $config_name;
         }
-      } catch (\TypeError $e) {
+      }
+      catch (\TypeError $e) {
         throw new CommandFailedException(dt('Source not found for @name.', ['@name' => $config_name]));
       }
     }
@@ -257,10 +258,10 @@ class KumquatDrushCommands extends DrushCommands {
       $toExport = array_unique(array_merge($toExport, array_keys($dependenciesList)));
       // Don't forget to exclude config objects we don't want.
       $toExport = array_diff($toExport, $toExclude);
-    } while($oldToExport !== $toExport);
+    } while ($oldToExport !== $toExport);
 
     // Then parse objects to export to extract their config dependencies.
-    foreach($toExport as $config_name) {
+    foreach ($toExport as $config_name) {
       if (!empty($dependenciesList[$config_name])) {
         $dependencies = $dependenciesList[$config_name]->getDependencies('config');
       }
@@ -294,6 +295,7 @@ class KumquatDrushCommands extends DrushCommands {
    *   Directory where the exported config will be located.
    *
    * @return \Drupal\Core\Config\FileStorage|null
+   *   The FileStorage instance allowing to write in the directory.
    */
   protected function prepareFileStorage($directory) {
     // Here we could determine to use relative paths etc.
