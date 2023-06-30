@@ -3,12 +3,58 @@
 namespace Drupal\kumquat_dev\Drush\Commands;
 
 use Composer\InstalledVersions;
+use Drupal\Component\FileSecurity\FileSecurity;
+use Drupal\Component\Render\FormattableMarkup;
+use Drupal\Core\Config\ConfigManagerInterface;
+use Drupal\Core\Config\FileStorage;
+use Drupal\Core\Config\StorageInterface;
+use Drupal\Core\Extension\ExtensionList;
+use Drupal\Core\Extension\InfoParserInterface;
 use Drush\Commands\DrushCommands;
+use Drush\Exceptions\CommandFailedException;
 
 /**
  * Kumquat specific drush commands.
  */
 class KumquatDrushCommands extends DrushCommands {
+
+  /**
+   * The modules list service.
+   *
+   * @var \Drupal\Core\Extension\ExtensionList
+   */
+  protected ExtensionList $moduleExtensionList;
+
+  /**
+   * The configuration manager service.
+   *
+   * @var \Drupal\Core\Config\ConfigManagerInterface
+   */
+  protected ConfigManagerInterface $configManager;
+
+  /**
+   * The info file parser service.
+   *
+   * @var \Drupal\Core\Extension\InfoParserInterface
+   */
+  protected InfoParserInterface $infoParser;
+
+  /**
+   * The configuration storage service.
+   *
+   * @var \Drupal\Core\Config\StorageInterface
+   */
+  protected StorageInterface $configStorage;
+
+  /**
+   * Class constructor.
+   */
+  public function __construct(ExtensionList $moduleExtensionList, ConfigManagerInterface $configManager, InfoParserInterface $infoParser, StorageInterface $configStorage) {
+    $this->moduleExtensionList = $moduleExtensionList;
+    $this->configManager = $configManager;
+    $this->infoParser = $infoParser;
+    $this->configStorage = $configStorage;
+  }
 
   /**
    * Update module.
@@ -93,6 +139,154 @@ class KumquatDrushCommands extends DrushCommands {
     $this->io()->newLine();
 
     ini_set('memory_limit', $mem);
+  }
+
+  /**
+   * Export configuration and config dependencies to the module/optional dir.
+   *
+   * Get the object to export or exclude from the module's info.yml file.
+   *
+   * For example:
+   *
+   * @code
+   * kumquat_devel:
+   *   export:
+   *     - paragraphs.paragraphs_type.rich_text
+   *   exclude:
+   *     - field.storage.paragraph.rich_text_style
+   * @endcode
+   *
+   * @param string $module
+   *   An existing module machine name.
+   *
+   * @command kumquat:export-config
+   * @aliases kex
+   */
+  public function exportConfig($module) {
+    if (!$this->moduleExtensionList->exists($module)) {
+      throw new CommandFailedException('Module does not exists');
+    }
+
+    $module_dir = $this->moduleExtensionList->getPath($module);
+    $info = $this->infoParser->parse(DRUPAL_ROOT . '/' .  $module_dir . '/' . $module . '.info.yml');
+    if (empty($info['kumquat_devel']['export'])) {
+      throw new CommandFailedException('Nothing to export! Check the kumquat_devel.export key of your info.yml file.');
+    }
+
+    $directoryStorage = $this->prepareFileStorage(DRUPAL_ROOT . '/' . $module_dir . '/config/optional');
+
+    $toExport = $info['kumquat_devel']['export'];
+    $toExclude = $info['kumquat_devel']['exclude'] ?? [];
+
+    $toExport = $this->getDependencies($toExport, $toExclude);
+
+    // Purge existing config files.
+    $directoryStorage->deleteAll();
+    // Export all the selected configurations.
+    foreach ($toExport as $config_name) {
+      try {
+        $directoryStorage->write($config_name, $this->configStorage->read($config_name));
+      } catch (\TypeError $e) {
+        throw new CommandFailedException(dt('Source not found for @name.', ['@name' => $config_name]));
+      }
+    }
+
+    $this->io()->success(new FormattableMarkup('@count files exported in @directory', [
+      '@count' => count($toExport),
+      '@directory' => $module_dir . '/config/optional',
+    ]));
+    $this->io()->listing($toExport);
+  }
+
+  /**
+   * Recursively get export dependencies but respect config to exclude.
+   *
+   * @param array $toExport
+   *   Array of config object names to export.
+   * @param array $toExclude
+   *   Array of config object names to exclude.
+   *
+   * @return array
+   *   Array of config object names to export including dependencies and
+   *   dependents but excluding objects marked to exclude.
+   */
+  protected function getDependencies(array $toExport = [], array $toExclude = []) {
+    $initialToExport = $toExport;
+    $dependenciesList = [];
+
+    // First use the ConfigManager to get dependent config objects.
+    do {
+      $oldToExport = $toExport;
+
+      $dependenciesList += $this->configManager->findConfigEntityDependencies('config', $toExport);
+      $toExport = array_unique(array_merge($toExport, array_keys($dependenciesList)));
+      // Don't forget to exclude config objects we don't want.
+      $toExport = array_diff($toExport, $toExclude);
+    } while($oldToExport !== $toExport);
+
+    // Then parse objects to export to extract their config dependencies.
+    foreach($toExport as $config_name) {
+      if (!empty($dependenciesList[$config_name])) {
+        $dependencies = $dependenciesList[$config_name]->getDependencies('config');
+      }
+      else {
+        $dependencies = $this->configManager->getConfigFactory()->get($config_name)->get('dependencies')['config'] ?? [];
+      }
+      $toExport = array_merge($toExport, $dependencies);
+      // Don't forget to exclude config objects we don't want.
+      $toExport = array_diff($toExport, $toExclude);
+    }
+
+    // Avoid duplicates.
+    $toExport = array_unique($toExport);
+
+    // If the list changed since the beginning of this method, loop.
+    if ($initialToExport !== $toExport) {
+      $toExport = $this->getDependencies($toExport, $toExclude);
+    }
+    return $toExport;
+  }
+
+  /**
+   * Helper to retrieve the FileStorage object associated to our output dir.
+   *
+   * BONUS: this method prepares the destination dir to export the config files.
+   * This code if mostly duplicated from
+   * \Drupal\config_split\ConfigSplitManager::getSplitStorage()
+   * with a focus on the directory target use case.
+   *
+   * @param string $directory
+   *   Directory where the exported config will be located.
+   *
+   * @return \Drupal\Core\Config\FileStorage|null
+   */
+  protected function prepareFileStorage($directory) {
+    // Here we could determine to use relative paths etc.
+    if (!is_dir($directory)) {
+      // If the directory doesn't exist, attempt to create it.
+      // This might have some negative consequences, but we trust the user to
+      // have properly configured their site.
+      /* @noinspection MkdirRaceConditionInspection */
+      @mkdir($directory, 0777, TRUE);
+    }
+    // The following is roughly: file_save_htaccess($directory, TRUE, TRUE);
+    // But we can't use global drupal functions, and we want to write the
+    // .htaccess file to ensure the configuration is protected and the
+    // directory not empty.
+    if (file_exists($directory) && is_writable($directory)) {
+      $htaccess_path = rtrim($directory, '/\\') . '/.htaccess';
+      if (!file_exists($htaccess_path)) {
+        file_put_contents($htaccess_path, FileSecurity::htaccessLines(TRUE));
+        @chmod($htaccess_path, 0444);
+      }
+    }
+
+    if (file_exists($directory) || strpos($directory, 'vfs://') === 0) {
+      // Allow virtual file systems even if file_exists is false.
+      return new FileStorage($directory);
+    }
+
+    return NULL;
   }
 
 }

@@ -1,5 +1,10 @@
 services:
   kumquat_dev.commands:
     class: \Drupal\kumquat_dev\Drush\Commands\KumquatDrushCommands
+    arguments:
+      - '@extension.list.module'
+      - '@config.manager'
+      - '@info_parser'
+      - '@config.storage'
     tags:
       - { name: drush.command }
