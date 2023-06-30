@@ -4,6 +4,7 @@ services:
     arguments:
       - '@extension.list.module'
       - '@config.manager'
+      - '@language_manager'
       - '@info_parser'
       - '@config.storage'
     tags:

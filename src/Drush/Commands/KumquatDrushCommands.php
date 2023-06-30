@@ -10,6 +10,8 @@ use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Extension\ExtensionList;
 use Drupal\Core\Extension\InfoParserInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\language\Config\LanguageConfigOverride;
 use Drush\Commands\DrushCommands;
 use Drush\Exceptions\CommandFailedException;
 
@@ -33,6 +35,13 @@ class KumquatDrushCommands extends DrushCommands {
   protected ConfigManagerInterface $configManager;
 
   /**
+   * The language manager service.
+   *
+   * @var \Drupal\Core\Language\LanguageManagerInterface
+   */
+  protected LanguageManagerInterface $languageManager;
+
+  /**
    * The info file parser service.
    *
    * @var \Drupal\Core\Extension\InfoParserInterface
@@ -49,9 +58,10 @@ class KumquatDrushCommands extends DrushCommands {
   /**
    * Class constructor.
    */
-  public function __construct(ExtensionList $moduleExtensionList, ConfigManagerInterface $configManager, InfoParserInterface $infoParser, StorageInterface $configStorage) {
+  public function __construct(ExtensionList $moduleExtensionList, ConfigManagerInterface $configManager, LanguageManagerInterface $languageManager, InfoParserInterface $infoParser, StorageInterface $configStorage) {
     $this->moduleExtensionList = $moduleExtensionList;
     $this->configManager = $configManager;
+    $this->languageManager = $languageManager;
     $this->infoParser = $infoParser;
     $this->configStorage = $configStorage;
   }
@@ -173,12 +183,14 @@ class KumquatDrushCommands extends DrushCommands {
       throw new CommandFailedException('Nothing to export! Check the kumquat_devel.export key of your info.yml file.');
     }
 
+    $languages = $this->languageManager->getLanguages();
     $directoryStorage = $this->prepareFileStorage(DRUPAL_ROOT . '/' . $module_dir . '/config/optional');
 
     $toExport = $info['kumquat_devel']['export'];
     $toExclude = $info['kumquat_devel']['exclude'] ?? [];
 
     $toExport = $this->getDependencies($toExport, $toExclude);
+    $exported = [];
 
     // Purge existing config files.
     $directoryStorage->deleteAll();
@@ -188,16 +200,37 @@ class KumquatDrushCommands extends DrushCommands {
         $data = $this->configStorage->read($config_name);
         unset($data['uuid'], $data['_core']);
         $directoryStorage->write($config_name, $data);
+        $exported[] = $config_name;
+
+        foreach ($languages as $language) {
+          $langcode = $language->getId();
+          if ($langcode === $data['langcode']) {
+            continue;
+          }
+
+          $override = $this->languageManager->getLanguageConfigOverride($langcode, $config_name);
+          if (!($override instanceof LanguageConfigOverride)) {
+            continue;
+          }
+          $translation = $override->get();
+          if (empty($translation)) {
+            continue;
+          }
+          $languageDirectoryStorage = $this->prepareFileStorage(DRUPAL_ROOT . '/' . $module_dir . '/config/optional/language/' . $langcode);
+          $languageDirectoryStorage->write($config_name, $translation);
+          $exported[] = 'translation/' . $langcode . '/' . $config_name;
+        }
       } catch (\TypeError $e) {
         throw new CommandFailedException(dt('Source not found for @name.', ['@name' => $config_name]));
       }
     }
 
     $this->io()->success(new FormattableMarkup('@count files exported in @directory', [
-      '@count' => count($toExport),
+      '@count' => count($exported),
       '@directory' => $module_dir . '/config/optional',
     ]));
-    $this->io()->listing($toExport);
+    sort($exported);
+    $this->io()->listing($exported);
   }
 
   /**
