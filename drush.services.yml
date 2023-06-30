@@ -1,0 +1,5 @@
+services:
+  kumquat_dev.commands:
+    class: \Drupal\kumquat_dev\Drush\Commands\KumquatDrushCommands
+    tags:
+      - { name: drush.command }

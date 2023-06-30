@@ -1,0 +1,19 @@
+{{ pattern_machine_name }}:
+  label: {{ pattern_name }}
+  settings: {  }
+  fields: {  }
+{% if pattern_has_style or pattern_has_js %}
+  libraries:
+    - {{ pattern_machine_name }}:
+{% if pattern_has_style %}
+        css:
+          component:
+            {{ pattern_machine_name }}.css: { minified: true }
+{% endif %}
+{% if pattern_has_js %}
+        js:
+          {{ pattern_machine_name }}.min.js: { minified: true }
+        dependencies:
+          - core/drupal
+{% endif %}
+{% endif %}

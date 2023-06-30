@@ -1,0 +1,13 @@
+{
+    "name": "happyculture/kumquat_dev",
+    "description": "Drupal module improving Dev Xp",
+    "type": "drupal-module",
+    "licence": "GPL-3.0-or-later",
+    "extra": {
+        "drush": {
+            "services": {
+                "drush.services.yml": "^9 || ^10 || ^11 || ^12"
+            }
+        }
+    }
+}
