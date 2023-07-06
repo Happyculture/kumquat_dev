@@ -20,7 +20,7 @@ projects.
 
 ### Drush commands
 
-#### drush kumquat:update
+#### drush kumquat:update (kup)
 
 Helper used to update dependencies. It runs `composer update` on the given
 dependency then `drush updb`, then `drush cex`, then adds all files to the git
