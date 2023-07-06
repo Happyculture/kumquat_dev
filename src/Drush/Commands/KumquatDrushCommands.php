@@ -159,8 +159,8 @@ class KumquatDrushCommands extends DrushCommands {
    * For example:
    *
    * @code
-   * kumquat_devel:
-   *   export:
+   * kumquat_export:
+   *   include:
    *     - paragraphs.paragraphs_type.rich_text
    *   exclude:
    *     - field.storage.paragraph.rich_text_style
@@ -179,15 +179,15 @@ class KumquatDrushCommands extends DrushCommands {
 
     $module_dir = $this->moduleExtensionList->getPath($module);
     $info = $this->infoParser->parse(DRUPAL_ROOT . '/' . $module_dir . '/' . $module . '.info.yml');
-    if (empty($info['kumquat_devel']['export'])) {
-      throw new CommandFailedException('Nothing to export! Check the kumquat_devel.export key of your info.yml file.');
+    if (empty($info['kumquat_export']['include'])) {
+      throw new CommandFailedException('Nothing to export! Check the kumquat_export.include key of your info.yml file.');
     }
 
     $languages = $this->languageManager->getLanguages();
     $directoryStorage = $this->prepareFileStorage(DRUPAL_ROOT . '/' . $module_dir . '/config/optional');
 
-    $toExport = $info['kumquat_devel']['export'];
-    $toExclude = $info['kumquat_devel']['exclude'] ?? [];
+    $toExport = $info['kumquat_export']['include'];
+    $toExclude = $info['kumquat_export']['exclude'] ?? [];
 
     $toExport = $this->getDependencies($toExport, $toExclude);
     $exported = [];

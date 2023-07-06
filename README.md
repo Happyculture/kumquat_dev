@@ -40,8 +40,8 @@ will be exported in the module's config/optional directory.
 
 Example of info.yml syntax:
 ```yaml
-kumquat_devel:
-  export:
+kumquat_export:
+  include:
     - paragraphs.paragraphs_type.rich_text
   exclude:
     - field.storage.paragraph.rich_text_style
