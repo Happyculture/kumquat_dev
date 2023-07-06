@@ -30,7 +30,7 @@ Some options allow you to control how the composer update is made, to provide
 the issue number to use in the commit message or even to make the commit
 without asking if you are very confident. See `drush help kumquat:update`.
 
-#### drush kumquat:export-config
+#### drush kumquat:export-module-config (kex)
 
 Helper used to maintain functional submodules containing configuration objects
 like node types or paragraph types. Any module can declare in its info.yml file

@@ -169,10 +169,10 @@ class KumquatDrushCommands extends DrushCommands {
    * @param string $module
    *   An existing module machine name.
    *
-   * @command kumquat:export-config
+   * @command kumquat:export-module-config
    * @aliases kex
    */
-  public function exportConfig($module) {
+  public function exportModuleConfig($module) {
     if (!$this->moduleExtensionList->exists($module)) {
       throw new CommandFailedException('Module does not exists');
     }
