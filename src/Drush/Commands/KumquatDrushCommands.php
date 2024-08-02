@@ -73,6 +73,7 @@ class KumquatDrushCommands extends DrushCommands {
     $process->run($process->showRealtime());
     $this->io()->newLine();
 
+    InstalledVersions::reload([]);
     if ($package === 'drupal/core-*') {
       $version = InstalledVersions::getPrettyVersion('drupal/core');
     }
