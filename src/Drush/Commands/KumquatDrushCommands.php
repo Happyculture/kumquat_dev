@@ -47,29 +47,29 @@ class KumquatDrushCommands extends DrushCommands {
     }
 
     $this->io()->section('Running composer update.');
-    $command = "composer --working-dir=$composerRoot update $package";
+    $command = "composer update $package";
     if (!empty($options['with-all-dependencies']) || !empty($options['W'])) {
       $command .= ' -W';
     }
     elseif (!empty($options['with-dependencies']) || !empty($options['w'])) {
       $command .= ' -w';
     }
-    $process = $this->processManager()->shell($command);
+    $process = $this->processManager()->shell($command, $composerRoot);
     $process->run($process->showRealtime());
     $this->io()->newLine();
 
     $this->io()->section('Running drush updb.');
-    $process = $this->processManager()->shell("drush updb -y");
+    $process = $this->processManager()->shell("./vendor/bin/drush updb -y", $composerRoot);
     $process->run($process->showRealtime());
     $this->io()->newLine();
 
     $this->io()->section('Running drush cex.');
-    $process = $this->processManager()->shell("drush cex -y");
+    $process = $this->processManager()->shell("./vendor/bin/drush cex -y", $composerRoot);
     $process->run($process->showRealtime());
     $this->io()->newLine();
 
     $this->io()->section('Running git add.');
-    $process = $this->processManager()->shell("git add -v composer.* config/sync");
+    $process = $this->processManager()->shell("git add -v composer.* config/sync", $composerRoot);
     $process->run($process->showRealtime());
     $this->io()->newLine();
 
@@ -92,7 +92,7 @@ class KumquatDrushCommands extends DrushCommands {
     }
     if ($autocommit) {
       $this->io()->section('Commiting changes.');
-      $process = $this->processManager()->shell($command);
+      $process = $this->processManager()->shell($command, $composerRoot);
       $process->run($process->showRealtime());
     }
     $this->io()->newLine();
