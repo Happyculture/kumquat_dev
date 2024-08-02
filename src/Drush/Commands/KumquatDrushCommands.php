@@ -3,6 +3,7 @@
 namespace Drupal\kumquat_dev\Drush\Commands;
 
 use Composer\InstalledVersions;
+use DrupalFinder\DrupalFinderComposerRuntime;
 use Drush\Commands\DrushCommands;
 
 /**
@@ -37,13 +38,16 @@ class KumquatDrushCommands extends DrushCommands {
     'AC' => FALSE,
   ]) {
     $mem = ini_set('memory_limit', '-1');
+    $composerRoot = method_exists($this->processManager(), 'getDrupalFinder') ?
+      $this->processManager()->getDrupalFinder()->getComposerRoot() :
+      (new DrupalFinderComposerRuntime())->getComposerRoot();
 
     if (strpos($package, '/') === FALSE) {
       $package = "drupal/$package";
     }
 
     $this->io()->section('Running composer update.');
-    $command = "composer update $package";
+    $command = "composer --working-dir=$composerRoot update $package";
     if (!empty($options['with-all-dependencies']) || !empty($options['W'])) {
       $command .= ' -W';
     }
