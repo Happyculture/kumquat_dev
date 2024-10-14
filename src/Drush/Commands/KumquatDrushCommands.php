@@ -29,6 +29,16 @@ class KumquatDrushCommands extends DrushCommands {
    * @option AC Same as --auto-commit.
    * @aliases kup
    */
+  #[CLI\Command(name: 'kumquat:update', aliases: ['kup', 'kumquat-update'])]
+  #[CLI\Argument(name: 'package', description: 'The composer package to update.')]
+  #[CLI\Option(name: 'with-dependencies', description: 'Add soft dependencies (-w) to the composer update.')]
+  #[CLI\Option(name: 'w', description: 'Same as --with-dependencies.')]
+  #[CLI\Option(name: 'with-all-dependencies', description: 'Add hard dependencies (-W) to the composer update.')]
+  #[CLI\Option(name: 'W', description: 'Same as --with-all-dependencies.')]
+  #[CLI\Option(name: 'auto-commit', description: 'Run the commit command instead of outputing it. Only recommended if your workspace is clean.')]
+  #[CLI\Option(name: 'AC', description: 'Same as --auto-commit.')]
+  #[CLI\Usage(name: 'drush kumquat:update drupal/admin_toolbar', description: 'Update the admin_toolbar module using composer.')]
+  #[CLI\Usage(name: 'drush kumquat:update drupal/core* --with-dependencies', description: 'Update Drupal Core with its dependencies.')]
   public function update($package, array $options = [
     'with-dependencies' => FALSE,
     'w' => FALSE,
