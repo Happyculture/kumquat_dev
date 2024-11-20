@@ -4,6 +4,7 @@ namespace Drupal\kumquat_dev\Drush\Commands;
 
 use Composer\InstalledVersions;
 use DrupalFinder\DrupalFinderComposerRuntime;
+use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
 
 /**
