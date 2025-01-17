@@ -2,4 +2,4 @@ name: Kumquat Dev
 type: module
 description: Provides dev tools for Kumquat projects.
 package: Kumquat
-core_version_requirement: ^9 || ^10
+core_version_requirement: ^10 || ^11
